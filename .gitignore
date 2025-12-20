@@ -1,0 +1,31 @@
+# Root .gitignore - common ignores for this project
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.env
+instance/*.db
+
+# Node
+node_modules/
+dist/
+
+# Editor directories and files
+.vscode/
+
+# Logs
+logs
+*.log
+
+# End of file
+
