@@ -1,6 +1,6 @@
 import React from "react"
 
-const ContactList = ({ contacts, updateContact, updateCallback }) => {
+const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goToPrev, goToNext, goToPage }) => {
     const onDelete = async (id) => {
         try {
             const options = {
@@ -17,6 +17,32 @@ const ContactList = ({ contacts, updateContact, updateCallback }) => {
         }
     }
 
+    // Render pagination controls
+    const renderPagination = () => {
+        if (pages <= 1) return null;
+        const pageNumbers = [];
+        for (let i = 1; i <= pages; i++) {
+            pageNumbers.push(
+                <button
+                    key={i}
+                    className={`page-btn${i === page ? ' active' : ''}`}
+                    onClick={() => goToPage(i)}
+                    disabled={i === page}
+                >
+                    {i}
+                </button>
+            );
+        }
+        return (
+            <div className="pagination-controls">
+                <button onClick={goToPrev} disabled={page === 1}>Previous</button>
+                {pageNumbers}
+                <button onClick={goToNext} disabled={page === pages}>Next</button>
+                <span className="page-info">Page {page} of {pages}</span>
+            </div>
+        );
+    };
+
     return (
         <div className="contact-list-container">
             <h2>Contacts</h2>
@@ -25,6 +51,7 @@ const ContactList = ({ contacts, updateContact, updateCallback }) => {
                     <p>No contacts found. Add your first contact!</p>
                 </div>
             ) : (
+                <>
                 <table className="contact-table">
                     <thead>
                         <tr>
@@ -48,6 +75,8 @@ const ContactList = ({ contacts, updateContact, updateCallback }) => {
                         ))}
                     </tbody>
                 </table>
+                {renderPagination()}
+                </>
             )}
         </div>
     )

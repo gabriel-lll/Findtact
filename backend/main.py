@@ -5,9 +5,22 @@ from models import Contact
 
 @app.route("/contacts", methods=["GET"])
 def get_contacts():
-    contacts = Contact.query.all()
+    # Get pagination parameters from query string, with defaults
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+
+    # Use SQLAlchemy's paginate method (Flask-SQLAlchemy >=3.0)
+    pagination = Contact.query.paginate(page=page, per_page=per_page, error_out=False)
+    contacts = pagination.items
     json_contacts = list(map(lambda x: x.to_json(), contacts))
-    return jsonify({"contacts": json_contacts})
+
+    return jsonify({
+        "contacts": json_contacts,
+        "total": pagination.total,
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "pages": pagination.pages
+    })
 
 
 @app.route("/create_contact", methods=["POST"])
