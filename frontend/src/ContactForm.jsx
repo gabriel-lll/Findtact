@@ -4,12 +4,27 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
     const [firstName, setFirstName] = useState(existingContact.firstName || "");
     const [lastName, setLastName] = useState(existingContact.lastName || "");
     const [email, setEmail] = useState(existingContact.email || "");
+    const [error, setError] = useState("");
 
     const updating = Object.entries(existingContact).length !== 0
 
-    const onSubmit = async (e) => {
-        e.preventDefault()
+    // Basic email validation
+    const validateEmail = (email) => {
+        const re = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+        return re.test(email);
+    };
 
+    const onSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+            setError("All fields are required.");
+            return;
+        }
+        if (!validateEmail(email)) {
+            setError("Please enter a valid email address.");
+            return;
+        }
         const data = {
             firstName,
             lastName,
@@ -26,7 +41,7 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
         const response = await fetch(url, options)
         if (response.status !== 201 && response.status !== 200) {
             const data = await response.json()
-            alert(data.message)
+            setError(data.message || "An error occurred.");
         } else {
             updateCallback()
         }
@@ -34,6 +49,7 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
 
     return (
         <form onSubmit={onSubmit}>
+            {error && <div className="form-error" style={{color: 'red', marginBottom: '10px'}}>{error}</div>}
             <div>
                 <label htmlFor="firstName">First Name:</label>
                 <input

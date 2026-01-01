@@ -1,6 +1,7 @@
 from flask import request, jsonify
 from config import app, db
 from models import Contact
+import re
 
 
 @app.route("/contacts", methods=["GET"])
@@ -34,12 +35,18 @@ def create_contact():
             jsonify({"message": "You must include a first name, last name and email"}),
             400,
         )
+    # Email format validation
+    email_regex = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    if not re.match(email_regex, email):
+        return jsonify({"message": "Invalid email format."}), 400
 
     new_contact = Contact(first_name=first_name, last_name=last_name, email=email)
     try:
         db.session.add(new_contact)
         db.session.commit()
     except Exception as e:
+        if 'UNIQUE constraint failed' in str(e) or 'duplicate key value violates unique constraint' in str(e):
+            return jsonify({"message": "A contact with this email already exists."}), 400
         return jsonify({"message": str(e)}), 400
 
     return jsonify({"message": "User created!"}), 201
@@ -53,10 +60,19 @@ def update_contact(user_id):
         return jsonify({"message": "User not found"}), 404
 
     data = request.json
+    new_email = data.get("email", contact.email)
+    # Email format validation
+    email_regex = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    if new_email and not re.match(email_regex, new_email):
+        return jsonify({"message": "Invalid email format."}), 400
+    # Check for duplicate email if changed
+    if new_email != contact.email:
+        existing = Contact.query.filter_by(email=new_email).first()
+        if existing:
+            return jsonify({"message": "A contact with this email already exists."}), 400
     contact.first_name = data.get("firstName", contact.first_name)
     contact.last_name = data.get("lastName", contact.last_name)
-    contact.email = data.get("email", contact.email)
-
+    contact.email = new_email
     db.session.commit()
 
     return jsonify({"message": "Usr updated."}), 200
