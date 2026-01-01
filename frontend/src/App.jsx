@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ContactList from "./ContactList";
 import "./App.css";
 import ContactForm from "./ContactForm";
+import Footer from "./Footer";
 
 function App() {
     const [contacts, setContacts] = useState([]);
@@ -40,6 +41,9 @@ function App() {
 
     return (
         <>
+            <header className="app-header">
+                <h1>Contact Manager</h1>
+            </header>
             <section className="about-section">
                 <h2>About Contact Manager</h2>
                 <p>
@@ -47,7 +51,7 @@ function App() {
                 </p>
             </section>
             <ContactList contacts={contacts} updateContact={openEditModal} updateCallback={onUpdate} />
-            <button onClick={openCreateModal}>Create New Contact</button>
+            <button className="primary-btn" onClick={openCreateModal}>Create New Contact</button>
             {isModalOpen && <div className="modal">
                 <div className="modal-content">
                     <span className="close" onClick={closeModal}>&times;</span>
@@ -55,6 +59,7 @@ function App() {
                 </div>
             </div>
             }
+            <Footer />
         </>
     );
 }

@@ -17,32 +17,40 @@ const ContactList = ({ contacts, updateContact, updateCallback }) => {
         }
     }
 
-    return <div>
-        <h2>Contacts</h2>
-        <table>
-            <thead>
-            <tr>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Email</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            {contacts.map((contact) => (
-                <tr key={contact.id}>
-                    <td>{contact.firstName}</td>
-                    <td>{contact.lastName}</td>
-                    <td>{contact.email}</td>
-                    <td>
-                        <button onClick={() => updateContact(contact)}>Update</button>
-                        <button onClick={() => onDelete(contact.id)}>Delete</button>
-                    </td>
-                </tr>
-            ))}
-            </tbody>
-        </table>
-    </div>
+    return (
+        <div className="contact-list-container">
+            <h2>Contacts</h2>
+            {contacts.length === 0 ? (
+                <div className="empty-state">
+                    <p>No contacts found. Add your first contact!</p>
+                </div>
+            ) : (
+                <table className="contact-table">
+                    <thead>
+                        <tr>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {contacts.map((contact) => (
+                            <tr key={contact.id}>
+                                <td>{contact.firstName}</td>
+                                <td>{contact.lastName}</td>
+                                <td>{contact.email}</td>
+                                <td>
+                                    <button className="table-btn update-btn" onClick={() => updateContact(contact)}>Update</button>
+                                    <button className="table-btn delete-btn" onClick={() => onDelete(contact.id)}>Delete</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    )
 }
 
 export default ContactList
