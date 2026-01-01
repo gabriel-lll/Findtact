@@ -40,6 +40,12 @@ function App() {
 
     return (
         <>
+            <section className="about-section">
+                <h2>About Contact Manager</h2>
+                <p>
+                    This app helps you manage your contacts efficiently. Soon, you will be able to use AI-powered semantic search to find contacts in a smarter way!
+                </p>
+            </section>
             <ContactList contacts={contacts} updateContact={openEditModal} updateCallback={onUpdate} />
             <button onClick={openCreateModal}>Create New Contact</button>
             {isModalOpen && <div className="modal">
