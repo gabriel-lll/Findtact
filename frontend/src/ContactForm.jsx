@@ -4,6 +4,8 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
     const [firstName, setFirstName] = useState(existingContact.firstName || "");
     const [lastName, setLastName] = useState(existingContact.lastName || "");
     const [email, setEmail] = useState(existingContact.email || "");
+    const [tags, setTags] = useState(existingContact.tags ? existingContact.tags.join(", ") : "");
+    const [notes, setNotes] = useState(existingContact.notes || "");
     const [error, setError] = useState("");
 
     const updating = Object.entries(existingContact).length !== 0
@@ -28,7 +30,9 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
         const data = {
             firstName,
             lastName,
-            email
+            email,
+            tags: tags.split(",").map(t => t.trim()).filter(Boolean),
+            notes
         }
         const url = "http://127.0.0.1:5000/" + (updating ? `update_contact/${existingContact.id}` : "create_contact")
         const options = {
@@ -75,6 +79,23 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                />
+            </div>
+            <div>
+                <label htmlFor="tags">Tags (comma separated):</label>
+                <input
+                    type="text"
+                    id="tags"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                />
+            </div>
+            <div>
+                <label htmlFor="notes">Notes:</label>
+                <textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                 />
             </div>
             <button type="submit">{updating ? "Update" : "Create"}</button>

@@ -58,6 +58,8 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>Email</th>
+                            <th>Tags</th>
+                            <th>Notes</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -67,6 +69,8 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
                                 <td>{contact.firstName}</td>
                                 <td>{contact.lastName}</td>
                                 <td>{contact.email}</td>
+                                <td>{contact.tags && contact.tags.length > 0 ? contact.tags.join(", ") : ""}</td>
+                                <td>{contact.notes}</td>
                                 <td>
                                     <button className="table-btn update-btn" onClick={() => updateContact(contact)}>Update</button>
                                     <button className="table-btn delete-btn" onClick={() => onDelete(contact.id)}>Delete</button>

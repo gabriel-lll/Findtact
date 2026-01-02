@@ -29,6 +29,8 @@ def create_contact():
     first_name = request.json.get("firstName")
     last_name = request.json.get("lastName")
     email = request.json.get("email")
+    tags = request.json.get("tags")
+    notes = request.json.get("notes")
 
     if not first_name or not last_name or not email:
         return (
@@ -40,7 +42,13 @@ def create_contact():
     if not re.match(email_regex, email):
         return jsonify({"message": "Invalid email format."}), 400
 
-    new_contact = Contact(first_name=first_name, last_name=last_name, email=email)
+    new_contact = Contact(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        tags=tags,
+        notes=notes
+    )
     try:
         db.session.add(new_contact)
         db.session.commit()
@@ -73,6 +81,8 @@ def update_contact(user_id):
     contact.first_name = data.get("firstName", contact.first_name)
     contact.last_name = data.get("lastName", contact.last_name)
     contact.email = new_email
+    contact.tags = data.get("tags", contact.tags)
+    contact.notes = data.get("notes", contact.notes)
     db.session.commit()
 
     return jsonify({"message": "Usr updated."}), 200
