@@ -2,6 +2,7 @@ from flask import request, jsonify
 from config import app, db
 from models import Contact
 import re
+import datetime
 
 
 @app.route("/contacts", methods=["GET"])
@@ -24,6 +25,17 @@ def get_contacts():
     })
 
 
+def build_profile_string(first_name, last_name, email, tags, notes):
+    tag_str = " ".join(tags) if tags else ""
+    return f"{first_name} {last_name} {email or ''} {tag_str} {notes or ''}"
+
+
+def generate_embedding(profile_string):
+    # TODO: Replace with actual embedding model/API call
+    # For now, return a dummy vector of zeros
+    return [0.0] * 1536, "dummy-model"
+
+
 @app.route("/create_contact", methods=["POST"])
 def create_contact():
     first_name = request.json.get("firstName")
@@ -42,12 +54,20 @@ def create_contact():
     if not re.match(email_regex, email):
         return jsonify({"message": "Invalid email format."}), 400
 
+    profile_string = build_profile_string(first_name, last_name, email, tags, notes)
+    embedding, embedding_model = generate_embedding(profile_string)
+    embedded_at = datetime.datetime.utcnow()
+
     new_contact = Contact(
         first_name=first_name,
         last_name=last_name,
         email=email,
         tags=tags,
-        notes=notes
+        notes=notes,
+        search_text=profile_string,
+        embedding=embedding,
+        embedding_model=embedding_model,
+        embedded_at=embedded_at
     )
     try:
         db.session.add(new_contact)
@@ -83,6 +103,9 @@ def update_contact(user_id):
     contact.email = new_email
     contact.tags = data.get("tags", contact.tags)
     contact.notes = data.get("notes", contact.notes)
+    contact.search_text = build_profile_string(contact.first_name, contact.last_name, contact.email, contact.tags, contact.notes)
+    contact.embedding, contact.embedding_model = generate_embedding(contact.search_text)
+    contact.embedded_at = datetime.datetime.utcnow()
     db.session.commit()
 
     return jsonify({"message": "Usr updated."}), 200
