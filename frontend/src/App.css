@@ -14,7 +14,7 @@
     margin: 10% auto;
     padding: 20px;
     border: 1px solid #888;
-    width: 80%;
+    width: min(900px, 90%);
 }
 
 .close {
@@ -29,7 +29,7 @@
     padding: 24px 32px;
     border-radius: 10px;
     margin: 32px auto 24px auto;
-    max-width: 700px;
+    max-width: 1100px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.07);
     text-align: center;
 }
@@ -89,13 +89,80 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     padding: 24px 32px;
     margin: 32px auto 0 auto;
-    max-width: 700px;
+    max-width: 1100px;
 }
 .contact-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 16px;
+    table-layout: fixed; /* keeps columns stable even with long text */
 }
+
+/* Column width hints (fixed layout uses these as strong guidance) */
+.contact-table .col-first { width: 20%; }
+.contact-table .col-last { width: 20%; }
+.contact-table .col-email { width: 24%; }
+.contact-table .col-tags { width: 14%; }
+.contact-table .col-notes { width: 22%; }
+.contact-table .col-actions { width: 160px; }
+
+/* Truncate long cell content (email/tags) */
+.cell-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Names should not be cut off so quickly. Allow wrapping. */
+.cell-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+}
+
+/* Notes can be longer; keep them neat by default.
+   Clamp only the notes text itself so the toggle button stays visible. */
+.cell-notes {
+    /* do not hide the toggle */
+}
+
+.cell-notes .notes-content {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.25em;
+    max-height: 3.75em; /* ~3 lines */
+    word-break: break-word;
+}
+
+/* Expanded notes: show full text */
+.cell-notes-expanded .notes-content {
+    display: block;
+    max-height: none;
+    overflow: visible;
+}
+
+.notes-content {
+    margin-bottom: 6px;
+}
+
+.notes-toggle {
+    background: transparent;
+    border: none;
+    color: #2563eb;
+    padding: 0;
+    font-size: 0.9em;
+    cursor: pointer;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.notes-toggle:hover {
+    text-decoration: underline;
+}
+
 .contact-table th, .contact-table td {
     padding: 12px 10px;
     border-bottom: 1px solid #e2e8f0;
@@ -140,13 +207,56 @@
 }
 .contact-table td {
     vertical-align: top;
-    /* Prevent buttons from stacking by using nowrap and flex for actions */
 }
+
 .contact-table td:last-child {
     white-space: nowrap;
     min-width: 140px;
 }
+
 .contact-table .table-btn {
     display: inline-block;
     margin-bottom: 0;
+}
+
+/* Generic 2-line expandable cell (names/email/tags) */
+.cell-wrap {
+    vertical-align: top;
+}
+
+.cell-expandable {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.25em;
+    max-height: 3.75em; /* ~3 lines */
+    word-break: break-word;
+}
+
+.cell-expandable-expanded {
+    display: block;
+    max-height: none;
+    overflow: visible;
+    word-break: break-word;
+}
+
+.cell-toggle {
+    background: transparent;
+    border: none;
+    color: #2563eb;
+    padding: 0;
+    font-size: 0.85em;
+    cursor: pointer;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.cell-toggle:hover {
+    text-decoration: underline;
+}
+
+.cell-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.95em;
 }

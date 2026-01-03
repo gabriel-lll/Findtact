@@ -12,10 +12,14 @@ function App() {
     // Pagination state
     const [page, setPage] = useState(1);
     const [pages, setPages] = useState(1);
-    const [perPage] = useState(10);
+    const [perPage] = useState(5);
 
     // Semantic search state: null => not searching, [] => searched but no results, [...] => results
     const [searchResults, setSearchResults] = useState(null);
+
+    // Seeder UI state
+    const [seeding, setSeeding] = useState(false);
+    const [seedMessage, setSeedMessage] = useState("");
 
     useEffect(() => {
         // While semantic search is active, don't overwrite the displayed list with paginated fetch.
@@ -29,6 +33,32 @@ function App() {
         setContacts(data.contacts);
         setPage(data.page);
         setPages(data.pages);
+    };
+
+    const seedDemoContacts = async () => {
+        setSeedMessage("");
+        setSeeding(true);
+        try {
+            const resp = await fetch("http://127.0.0.1:5000/seed_contacts", { method: "POST" });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+                setSeedMessage(data?.message || `Seeding failed (HTTP ${resp.status}).`);
+                return;
+            }
+
+            const created = data?.created ?? 0;
+            const skipped = data?.skipped ?? 0;
+            setSeedMessage(`Seeded demo contacts. Created ${created}, skipped ${skipped}.`);
+
+            // Exit semantic search mode (if active), reset to page 1, and refresh.
+            setSearchResults(null);
+            setPage(1);
+            await fetchContacts(1);
+        } catch (e) {
+            setSeedMessage(`Seeding failed: ${String(e)}`);
+        } finally {
+            setSeeding(false);
+        }
     };
 
     const closeModal = () => {
@@ -66,13 +96,26 @@ function App() {
     return (
         <>
             <header className="app-header">
-                <h1>Contact Manager</h1>
+                <h1>Findtact</h1>
             </header>
             <section className="about-section">
-                <h2>About Contact Manager</h2>
+                <h2>About Findtact</h2>
                 <p>
-                    This app helps you manage your contacts efficiently. Soon, you will be able to use AI-powered semantic search to find contacts in a smarter way!
+                    Save people you meet in everyday life (neighbors, coworkers, a landlord, a doctor) with helpful tags and notes.
+                    Semantic search lets you find someone by context, not just exact words.
+                    Try searches like "package drop-off", "building manager", "marketing team", "gym buddy", "primary care clinic", or "neighbor in Apt 3B".
                 </p>
+
+                <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
+                    <button className="primary-btn" style={{ margin: 0 }} onClick={seedDemoContacts} disabled={seeding}>
+                        {seeding ? "Seeding…" : "Seed demo contacts"}
+                    </button>
+                </div>
+                {seedMessage ? (
+                    <div style={{ marginTop: "10px", color: "#4a5568", fontSize: "0.95em" }}>
+                        {seedMessage}
+                    </div>
+                ) : null}
 
                 <SemanticSearch onResults={setSearchResults} />
                 {searchResults !== null ? (
@@ -91,7 +134,6 @@ function App() {
                 goToNext={goToNext}
                 goToPage={goToPage}
                 disablePagination={searchResults !== null}
-                showSimilarity={searchResults !== null}
             />
             <button className="primary-btn" onClick={openCreateModal}>Create New Contact</button>
             {isModalOpen && <div className="modal">
@@ -107,3 +149,4 @@ function App() {
 }
 
 export default App;
+
