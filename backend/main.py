@@ -3,6 +3,11 @@ from config import app, db
 from models import Contact
 import re
 import datetime
+from sentence_transformers import SentenceTransformer
+from sqlalchemy import text
+
+# Load the model once at startup
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")  # 384-dim vectors
 
 
 @app.route("/contacts", methods=["GET"])
@@ -31,9 +36,8 @@ def build_profile_string(first_name, last_name, email, tags, notes):
 
 
 def generate_embedding(profile_string):
-    # TODO: Replace with actual embedding model/API call
-    # For now, return a dummy vector of zeros
-    return [0.0] * 1536, "dummy-model"
+    embedding = embedding_model.encode(profile_string)
+    return embedding.tolist(), "all-MiniLM-L6-v2"
 
 
 @app.route("/create_contact", methods=["POST"])
@@ -122,6 +126,38 @@ def delete_contact(user_id):
     db.session.commit()
 
     return jsonify({"message": "User deleted!"}), 200
+
+
+@app.route("/semantic_search", methods=["POST"])
+def semantic_search():
+    data = request.get_json()
+    query = data.get("query")
+    if not query:
+        return jsonify({"message": "Query is required."}), 400
+
+    # Generate embedding for the query
+    query_embedding, _ = generate_embedding(query)
+
+    # Find top 10 most similar contacts using cosine similarity
+    sql = text('''
+        SELECT *, 1 - (embedding <#> :query_embedding) AS similarity
+        FROM contact
+        WHERE embedding IS NOT NULL
+        ORDER BY similarity DESC
+        LIMIT 10
+    ''')
+    result = db.session.execute(sql, {"query_embedding": query_embedding}).fetchall()
+
+    contacts = []
+    for row in result:
+        # Convert SQLAlchemy Row to dict, then to_json if needed
+        contact = Contact.query.get(row.id)
+        if contact:
+            contact_json = contact.to_json()
+            contact_json["similarity"] = row.similarity
+            contacts.append(contact_json)
+
+    return jsonify({"results": contacts})
 
 
 if __name__ == "__main__":
