@@ -213,6 +213,92 @@ def semantic_search():
     return jsonify({"results": results})
 
 
+@app.route("/seed_contacts", methods=["POST"])
+def seed_contacts():
+    """Seed the database with some dummy contacts for demo/testing.
+
+    Safe to call multiple times: uses email as a natural unique key and will skip
+    contacts that already exist.
+    """
+    dummy_contacts = [
+        {
+            "firstName": "Maya",
+            "lastName": "Thompson",
+            "email": "maya.thompson@example.com",
+            "tags": ["neighbor", "kids"],
+            "notes": "Lives in Apt 3B. Great for package drop-offs. Has a golden retriever named Sunny.",
+        },
+        {
+            "firstName": "Jordan",
+            "lastName": "Reed",
+            "email": "jordan.reed@example.com",
+            "tags": ["coworker", "project"],
+            "notes": "Works on the marketing team. Preferred contact: email. Usually free after 3pm.",
+        },
+        {
+            "firstName": "Elena",
+            "lastName": "Garcia",
+            "email": "elena.garcia@example.com",
+            "tags": ["doctor", "clinic"],
+            "notes": "Primary care clinic. Front desk asks for DOB when scheduling. Best to call mornings.",
+        },
+        {
+            "firstName": "Sam",
+            "lastName": "Patel",
+            "email": "sam.patel@example.com",
+            "tags": ["landlord", "repairs"],
+            "notes": "Building manager. Text for urgent repairs (leaks, heating). Email for paperwork.",
+        },
+        {
+            "firstName": "Renee",
+            "lastName": "Kim",
+            "email": "renee.kim@example.com",
+            "tags": ["friend", "gym"],
+            "notes": "Gym buddy. Likes weekend classes and coffee after. Try searching 'gym weekend coffee'.",
+        },
+    ]
+
+    created = 0
+    skipped = 0
+
+    for c in dummy_contacts:
+        if Contact.query.filter_by(email=c["email"]).first():
+            skipped += 1
+            continue
+
+        profile_string = build_profile_string(
+            c["firstName"],
+            c["lastName"],
+            c["email"],
+            c.get("tags"),
+            c.get("notes"),
+        )
+        embedding, embedding_model_name = generate_embedding(profile_string)
+
+        new_contact = Contact(
+            first_name=c["firstName"],
+            last_name=c["lastName"],
+            email=c["email"],
+            tags=c.get("tags"),
+            notes=c.get("notes"),
+            search_text=profile_string,
+            embedding=embedding,
+            embedding_model=embedding_model_name,
+            embedded_at=datetime.datetime.now(datetime.UTC),
+        )
+        db.session.add(new_contact)
+        created += 1
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Seed complete.",
+        "created": created,
+        "skipped": skipped,
+        "total": len(dummy_contacts),
+    }), 200
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
