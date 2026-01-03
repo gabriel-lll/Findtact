@@ -12,7 +12,7 @@ class Contact(db.Model):
     notes = db.Column(db.Text, nullable=True)
     # Embedding fields for semantic search
     search_text = db.Column(db.Text, nullable=True)  # Combined profile string for embedding
-    embedding = db.Column(Vector(1536), nullable=True)  # Adjust dimension as needed
+    embedding = db.Column(Vector(384), nullable=True)  # Changed from 1536 to 384
     embedding_model = db.Column(db.Text, nullable=True)
     embedded_at = db.Column(TIMESTAMP, nullable=True)
 
