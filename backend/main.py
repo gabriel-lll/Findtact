@@ -60,7 +60,7 @@ def create_contact():
 
     profile_string = build_profile_string(first_name, last_name, email, tags, notes)
     embedding, embedding_model = generate_embedding(profile_string)
-    embedded_at = datetime.datetime.utcnow()
+    embedded_at = datetime.datetime.now(datetime.UTC)
 
     new_contact = Contact(
         first_name=first_name,
@@ -109,7 +109,7 @@ def update_contact(user_id):
     contact.notes = data.get("notes", contact.notes)
     contact.search_text = build_profile_string(contact.first_name, contact.last_name, contact.email, contact.tags, contact.notes)
     contact.embedding, contact.embedding_model = generate_embedding(contact.search_text)
-    contact.embedded_at = datetime.datetime.utcnow()
+    contact.embedded_at = datetime.datetime.now(datetime.UTC)
     db.session.commit()
 
     return jsonify({"message": "Usr updated."}), 200
@@ -128,36 +128,89 @@ def delete_contact(user_id):
     return jsonify({"message": "User deleted!"}), 200
 
 
+@app.route("/health/db", methods=["GET"])
+def health_db():
+    """Quick sanity check for debugging: confirms DB connectivity and row counts."""
+    # DB name and user help spot 'wrong database' issues instantly.
+    meta = db.session.execute(text("SELECT current_database() AS db, current_user AS user")).mappings().one()
+    count = db.session.execute(text("SELECT COUNT(*) AS n FROM public.contact")).mappings().one()["n"]
+    return jsonify({"database": meta["db"], "user": meta["user"], "contact_count": count})
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(err):
+    # Ensure we return JSON on unexpected errors (makes frontend debugging easier).
+    # Flask-CORS should attach headers; this handler keeps the response consistent.
+    app.logger.exception("Unhandled exception: %s", err)
+    return jsonify({"message": str(err)}), 500
+
+
+@app.route("/semantic_search", methods=["OPTIONS"])
+def semantic_search_options():
+    # Explicit preflight response. Flask-CORS usually handles this, but some setups
+    # can still fail when the main handler errors.
+    return ("", 204)
+
+
 @app.route("/semantic_search", methods=["POST"])
 def semantic_search():
-    data = request.get_json()
+    app.logger.info("/semantic_search Origin=%s", request.headers.get("Origin"))
+    data = request.get_json() or {}
     query = data.get("query")
-    if not query:
+    limit = data.get("limit", 10)
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 10
+    limit = max(1, min(limit, 50))
+
+    if not query or not str(query).strip():
         return jsonify({"message": "Query is required."}), 400
 
-    # Generate embedding for the query
     query_embedding, _ = generate_embedding(query)
 
-    # Find top 10 most similar contacts using cosine similarity
+    # Send as pgvector text literal to avoid psycopg2 treating it as numeric[]
+    query_embedding_literal = "[" + ",".join(map(str, query_embedding)) + "]"
+
     sql = text('''
-        SELECT *, 1 - (embedding <#> :query_embedding) AS similarity
-        FROM contact
+        SELECT
+            id,
+            first_name,
+            last_name,
+            email,
+            tags,
+            notes,
+            search_text,
+            embedding_model,
+            embedded_at,
+            (1 - (embedding <=> CAST(:query_embedding AS vector))) AS similarity
+        FROM public.contact
         WHERE embedding IS NOT NULL
-        ORDER BY similarity DESC
-        LIMIT 10
+        ORDER BY embedding <=> CAST(:query_embedding AS vector)
+        LIMIT :limit
     ''')
-    result = db.session.execute(sql, {"query_embedding": query_embedding}).fetchall()
 
-    contacts = []
-    for row in result:
-        # Convert SQLAlchemy Row to dict, then to_json if needed
-        contact = Contact.query.get(row.id)
-        if contact:
-            contact_json = contact.to_json()
-            contact_json["similarity"] = row.similarity
-            contacts.append(contact_json)
+    rows = db.session.execute(
+        sql,
+        {"query_embedding": query_embedding_literal, "limit": limit}
+    ).mappings().all()
 
-    return jsonify({"results": contacts})
+    results = []
+    for r in rows:
+        results.append({
+            "id": r["id"],
+            "firstName": r["first_name"],
+            "lastName": r["last_name"],
+            "email": r["email"],
+            "tags": r["tags"],
+            "notes": r["notes"],
+            "search_text": r["search_text"],
+            "embedding_model": r["embedding_model"],
+            "embedded_at": r["embedded_at"],
+            "similarity": float(r["similarity"]) if r["similarity"] is not None else None,
+        })
+
+    return jsonify({"results": results})
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import React from "react"
 
-const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goToPrev, goToNext, goToPage }) => {
+const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goToPrev, goToNext, goToPage, disablePagination = false, showSimilarity = false }) => {
     const onDelete = async (id) => {
         try {
             const options = {
@@ -19,6 +19,7 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
 
     // Render pagination controls
     const renderPagination = () => {
+        if (disablePagination) return null;
         if (pages <= 1) return null;
         const pageNumbers = [];
         for (let i = 1; i <= pages; i++) {
@@ -60,6 +61,7 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
                             <th>Email</th>
                             <th>Tags</th>
                             <th>Notes</th>
+                            {showSimilarity ? <th>Similarity</th> : null}
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -71,6 +73,9 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
                                 <td>{contact.email}</td>
                                 <td>{contact.tags && contact.tags.length > 0 ? contact.tags.join(", ") : ""}</td>
                                 <td>{contact.notes}</td>
+                                {showSimilarity ? (
+                                    <td>{typeof contact.similarity === 'number' ? contact.similarity.toFixed(3) : ''}</td>
+                                ) : null}
                                 <td>
                                     <button className="table-btn update-btn" onClick={() => updateContact(contact)}>Update</button>
                                     <button className="table-btn delete-btn" onClick={() => onDelete(contact.id)}>Delete</button>
