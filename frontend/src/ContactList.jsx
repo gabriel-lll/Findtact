@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
+import API from "./api";
 
 const clampOverflow = (el) => {
     if (!el) return false;
@@ -98,7 +99,7 @@ const ContactList = ({ contacts, updateContact, updateCallback, page, pages, goT
             const options = {
                 method: "DELETE"
             }
-            const response = await fetch(`http://127.0.0.1:5000/delete_contact/${id}`, options)
+            const response = await fetch(API.deleteContact(id), options)
             if (response.status === 200) {
                 updateCallback()
             } else {

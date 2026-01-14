@@ -4,6 +4,7 @@ import "./App.css";
 import ContactForm from "./ContactForm";
 import Footer from "./Footer";
 import SemanticSearch from "./SemanticSearch";
+import API from "./api";
 
 function App() {
     const [contacts, setContacts] = useState([]);
@@ -28,7 +29,7 @@ function App() {
     }, [page, searchResults]);
 
     const fetchContacts = async (pageNum = 1) => {
-        const response = await fetch(`http://127.0.0.1:5000/contacts?page=${pageNum}&per_page=${perPage}`);
+        const response = await fetch(`${API.contacts}?page=${pageNum}&per_page=${perPage}`);
         const data = await response.json();
         setContacts(data.contacts);
         setPage(data.page);
@@ -39,7 +40,7 @@ function App() {
         setSeedMessage("");
         setSeeding(true);
         try {
-            const resp = await fetch("http://127.0.0.1:5000/seed_contacts", { method: "POST" });
+            const resp = await fetch(API.seedContacts, { method: "POST" });
             const data = await resp.json().catch(() => ({}));
             if (!resp.ok) {
                 setSeedMessage(data?.message || `Seeding failed (HTTP ${resp.status}).`);

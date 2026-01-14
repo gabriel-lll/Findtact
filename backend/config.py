@@ -5,11 +5,17 @@ import os
 
 app = Flask(__name__)
 
-# Allow the Vite dev server origins (localhost + 127.0.0.1) to call the API.
-# Setting supports_credentials=False keeps things simple for a JSON API.
+# CORS configuration - allow both development and production origins
+# In production with nginx proxy, requests come from same origin so CORS isn't strictly needed,
+# but we keep it for flexibility and local development.
+cors_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
+
 CORS(
     app,
-    origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    origins=cors_origins,
     supports_credentials=False,
 )
 

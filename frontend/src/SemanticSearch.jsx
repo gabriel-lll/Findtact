@@ -1,4 +1,5 @@
 import { useState } from "react";
+import API from "./api";
 
 const SemanticSearch = ({ onResults }) => {
   const [query, setQuery] = useState("");
@@ -19,12 +20,12 @@ const SemanticSearch = ({ onResults }) => {
     setLoading(true);
     try {
       // Quick connectivity check so we can surface a useful error if the backend is down.
-      const healthResp = await fetch("http://127.0.0.1:5000/health/db");
+      const healthResp = await fetch(API.healthDb);
       if (!healthResp.ok) {
         throw new Error(`Backend health check failed (HTTP ${healthResp.status}). Is Flask running?`);
       }
 
-      const resp = await fetch("http://127.0.0.1:5000/semantic_search", {
+      const resp = await fetch(API.semanticSearch, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q, limit: 10 }),
@@ -49,8 +50,8 @@ const SemanticSearch = ({ onResults }) => {
       // Browser 'TypeError: Load failed' usually means network/CORS/backend not running.
       console.error("Semantic search failed:", err);
       setError(
-        `Load failed. This usually means the backend isn't reachable at http://127.0.0.1:5000. ` +
-          `Make sure the Flask server is running and CORS is allowed. Details: ${String(err?.message || err)}`
+        `Load failed. This usually means the backend isn't reachable. ` +
+          `Make sure the Flask server is running. Details: ${String(err?.message || err)}`
       );
       onResults([]);
     } finally {

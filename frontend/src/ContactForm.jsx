@@ -1,4 +1,5 @@
 import { useState } from "react";
+import API from "./api";
 
 const ContactForm = ({ existingContact = {}, updateCallback }) => {
     const [firstName, setFirstName] = useState(existingContact.firstName || "");
@@ -34,7 +35,7 @@ const ContactForm = ({ existingContact = {}, updateCallback }) => {
             tags: tags.split(",").map(t => t.trim()).filter(Boolean),
             notes
         }
-        const url = "http://127.0.0.1:5000/" + (updating ? `update_contact/${existingContact.id}` : "create_contact")
+        const url = updating ? API.updateContact(existingContact.id) : API.createContact
         const options = {
             method: updating ? "PATCH" : "POST",
             headers: {
