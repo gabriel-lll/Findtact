@@ -95,10 +95,11 @@ function App() {
     const displayedContacts = searchResults !== null ? searchResults : contacts;
 
     return (
-        <>
+        <div className="app-container">
             <header className="app-header">
                 <h1>Findtact</h1>
             </header>
+            <main className="app-main">
             <section className="about-section">
                 <h2>About Findtact</h2>
                 <p>
@@ -144,8 +145,9 @@ function App() {
                 </div>
             </div>
             }
+            </main>
             <Footer />
-        </>
+        </div>
     );
 }
 

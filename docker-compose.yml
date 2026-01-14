@@ -26,7 +26,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-findtact}:${POSTGRES_PASSWORD:-findtact123}@db:5432/${POSTGRES_DB:-findtact}
       FLASK_ENV: ${FLASK_ENV:-production}
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       db:
         condition: service_healthy

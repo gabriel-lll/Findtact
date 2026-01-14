@@ -1,3 +1,13 @@
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app-main {
+    flex: 1;
+}
+
 .modal {
     position: fixed;
     z-index: 1;
@@ -72,7 +82,7 @@
     color: #fff;
     text-align: center;
     padding: 18px 0 12px 0;
-    margin-top: 40px;
+    margin-top: auto;
     font-size: 1em;
 }
 .app-footer a {
