@@ -1,10 +1,13 @@
-from flask import request, jsonify
+from flask import request, jsonify, Response
 from config import app, db
 from models import Contact
 import re
 import datetime
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
+import numpy as np
+import pandas as pd
+from io import StringIO
 
 # Load the model once at startup
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")  # 384-dim vectors
@@ -36,8 +39,14 @@ def build_profile_string(first_name, last_name, email, tags, notes):
 
 
 def generate_embedding(profile_string):
+    """Generate a normalized embedding using numpy for vector operations."""
     embedding = embedding_model.encode(profile_string)
-    return embedding.tolist(), "all-MiniLM-L6-v2"
+    # Use numpy to normalize the embedding vector (unit length for cosine similarity)
+    embedding_np = np.array(embedding)
+    norm = np.linalg.norm(embedding_np)
+    if norm > 0:
+        embedding_np = embedding_np / norm
+    return embedding_np.tolist(), "all-MiniLM-L6-v2"
 
 
 @app.route("/create_contact", methods=["POST"])
@@ -297,6 +306,240 @@ def seed_contacts():
         "skipped": skipped,
         "total": len(dummy_contacts),
     }), 200
+
+
+# ===================== PANDAS-POWERED ENDPOINTS =====================
+
+@app.route("/export_contacts", methods=["GET"])
+def export_contacts():
+    """Export all contacts to CSV using pandas DataFrame."""
+    contacts = Contact.query.all()
+
+    if not contacts:
+        return jsonify({"message": "No contacts to export."}), 404
+
+    # Convert contacts to pandas DataFrame
+    data = []
+    for c in contacts:
+        data.append({
+            "id": c.id,
+            "first_name": c.first_name,
+            "last_name": c.last_name,
+            "email": c.email,
+            "tags": ";".join(c.tags) if c.tags else "",  # Join tags with semicolon
+            "notes": c.notes or "",
+            "created_at": c.embedded_at
+        })
+
+    df = pd.DataFrame(data)
+
+    # Convert to CSV string
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_content = csv_buffer.getvalue()
+
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=contacts_export.csv"}
+    )
+
+
+@app.route("/import_contacts", methods=["POST"])
+def import_contacts():
+    """Import contacts from CSV file using pandas."""
+    if "file" not in request.files:
+        return jsonify({"message": "No file provided."}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"message": "No file selected."}), 400
+
+    try:
+        # Read CSV into pandas DataFrame
+        df = pd.read_csv(file)
+
+        # Validate required columns
+        required_cols = ["first_name", "last_name", "email"]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            return jsonify({"message": f"Missing required columns: {missing_cols}"}), 400
+
+        # Clean data using pandas
+        df = df.fillna("")  # Replace NaN with empty strings
+        df["first_name"] = df["first_name"].astype(str).str.strip()
+        df["last_name"] = df["last_name"].astype(str).str.strip()
+        df["email"] = df["email"].astype(str).str.strip().str.lower()
+
+        created = 0
+        skipped = 0
+        errors = []
+
+        for idx, row in df.iterrows():
+            # Skip if email already exists
+            if Contact.query.filter_by(email=row["email"]).first():
+                skipped += 1
+                continue
+
+            # Parse tags from semicolon-separated string
+            tags = []
+            if "tags" in row and row["tags"]:
+                tags = [t.strip() for t in str(row["tags"]).split(";") if t.strip()]
+
+            notes = row.get("notes", "") if "notes" in df.columns else ""
+
+            profile_string = build_profile_string(
+                row["first_name"],
+                row["last_name"],
+                row["email"],
+                tags,
+                notes
+            )
+            embedding, embedding_model_name = generate_embedding(profile_string)
+
+            new_contact = Contact(
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                email=row["email"],
+                tags=tags if tags else None,
+                notes=notes if notes else None,
+                search_text=profile_string,
+                embedding=embedding,
+                embedding_model=embedding_model_name,
+                embedded_at=datetime.datetime.now(datetime.UTC),
+            )
+            db.session.add(new_contact)
+            created += 1
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Import complete.",
+            "created": created,
+            "skipped": skipped,
+            "total_rows": len(df)
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": f"Error processing CSV: {str(e)}"}), 400
+
+
+@app.route("/contacts/analytics", methods=["GET"])
+def contacts_analytics():
+    """Get analytics about contacts using pandas and numpy."""
+    contacts = Contact.query.all()
+
+    if not contacts:
+        return jsonify({"message": "No contacts for analytics."}), 404
+
+    # Build DataFrame for analysis
+    data = []
+    embeddings = []
+    for c in contacts:
+        data.append({
+            "id": c.id,
+            "first_name": c.first_name,
+            "last_name": c.last_name,
+            "email": c.email,
+            "tags": c.tags or [],
+            "notes": c.notes or "",
+            "notes_length": len(c.notes) if c.notes else 0,
+            "tag_count": len(c.tags) if c.tags else 0,
+            "embedded_at": c.embedded_at
+        })
+        if c.embedding:
+            embeddings.append(c.embedding)
+
+    df = pd.DataFrame(data)
+
+    # Tag frequency analysis using pandas
+    all_tags = []
+    for tags in df["tags"]:
+        all_tags.extend(tags)
+    tag_series = pd.Series(all_tags)
+    tag_counts = tag_series.value_counts().to_dict() if all_tags else {}
+
+    # Notes statistics using pandas/numpy
+    notes_stats = {
+        "avg_length": float(df["notes_length"].mean()),
+        "max_length": int(df["notes_length"].max()),
+        "min_length": int(df["notes_length"].min()),
+        "contacts_with_notes": int((df["notes_length"] > 0).sum())
+    }
+
+    # Tag statistics
+    tag_stats = {
+        "avg_tags_per_contact": float(df["tag_count"].mean()),
+        "max_tags": int(df["tag_count"].max()),
+        "contacts_with_tags": int((df["tag_count"] > 0).sum()),
+        "unique_tags": len(tag_counts),
+        "top_tags": dict(list(tag_counts.items())[:10])  # Top 10 tags
+    }
+
+    # Embedding analysis using numpy (if embeddings exist)
+    embedding_stats = {}
+    if embeddings:
+        embeddings_np = np.array(embeddings)
+        # Calculate average embedding magnitude
+        magnitudes = np.linalg.norm(embeddings_np, axis=1)
+        embedding_stats = {
+            "total_embedded": len(embeddings),
+            "avg_magnitude": float(np.mean(magnitudes)),
+            "embedding_dimension": embeddings_np.shape[1]
+        }
+
+    return jsonify({
+        "total_contacts": len(contacts),
+        "notes_stats": notes_stats,
+        "tag_stats": tag_stats,
+        "embedding_stats": embedding_stats,
+        "email_domains": df["email"].str.split("@").str[1].value_counts().to_dict()
+    })
+
+
+@app.route("/contacts/similar/<int:contact_id>", methods=["GET"])
+def find_similar_contacts(contact_id):
+    """Find contacts similar to a given contact using numpy cosine similarity."""
+    contact = Contact.query.get(contact_id)
+
+    if not contact:
+        return jsonify({"message": "Contact not found."}), 404
+
+    if not contact.embedding:
+        return jsonify({"message": "Contact has no embedding."}), 400
+
+    limit = request.args.get("limit", 5, type=int)
+    limit = max(1, min(limit, 20))
+
+    # Get all other contacts with embeddings
+    other_contacts = Contact.query.filter(
+        Contact.id != contact_id,
+        Contact.embedding.isnot(None)
+    ).all()
+
+    if not other_contacts:
+        return jsonify({"results": [], "message": "No other contacts to compare."})
+
+    # Use numpy for efficient similarity calculation
+    target_embedding = np.array(contact.embedding)
+
+    similarities = []
+    for c in other_contacts:
+        other_embedding = np.array(c.embedding)
+        # Cosine similarity using numpy dot product (embeddings are normalized)
+        similarity = float(np.dot(target_embedding, other_embedding))
+        similarities.append({
+            "contact": c.to_json(),
+            "similarity": similarity
+        })
+
+    # Sort by similarity (descending) using numpy-style sorting
+    similarities.sort(key=lambda x: x["similarity"], reverse=True)
+
+    return jsonify({
+        "source_contact": contact.to_json(),
+        "similar_contacts": similarities[:limit]
+    })
 
 
 # Create database tables on startup (works with both direct run and gunicorn)
