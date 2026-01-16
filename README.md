@@ -3,7 +3,7 @@
 Findtact is a full-stack contact manager with **semantic search**.  
 Instead of searching by exact keywords, Findtact lets you search by **meaning/context** by ranking contacts using vector similarity.
 
-**Tech Stack:** React + Vite (frontend), Flask (REST API), PostgreSQL + pgvector (vector search), SQLAlchemy, SentenceTransformer
+**Tech Stack:** React + Vite (frontend), Flask (REST API), PostgreSQL + pgvector (vector search), SQLAlchemy, SentenceTransformer, NumPy, Pandas
 
 ---
 <img width="650" height="850" alt="Screenshot 2026-01-08 at 2 11 40 PM" src="https://github.com/user-attachments/assets/ac2ea9f2-2f9b-48d0-ba8f-e8823df0839d" />
@@ -128,6 +128,9 @@ The frontend will be available at [http://localhost:5173](http://localhost:5173)
 - **Contacts CRUD**: Create, update, delete contacts with validation (e.g., email format + uniqueness)
 - **Paginated listing**: `GET /contacts?page=...&per_page=...`
 - **Semantic search**: Query contacts by meaning/context and return ranked results with similarity scores
+- **CSV Import/Export**: Bulk import contacts from CSV or export all contacts (powered by Pandas)
+- **Contact Analytics**: Tag frequency, email domain breakdown, notes statistics
+- **Find Similar Contacts**: Discover contacts similar to a given one using NumPy cosine similarity
 - **Seed demo data**: One-click demo dataset to try semantic search immediately
 - **Health check**: DB connectivity endpoint at `/health/db`
 
@@ -137,8 +140,9 @@ The frontend will be available at [http://localhost:5173](http://localhost:5173)
 
 1. For each contact, Findtact builds a combined text profile (name, email, tags, notes)
 2. A SentenceTransformer model (`all-MiniLM-L6-v2`) converts the profile into a 384-dimension vector
-3. Vectors are stored in PostgreSQL using the `pgvector` extension
-4. When you search, the query is embedded and the backend ranks contacts by vector distance using cosine similarity
+3. Vectors are normalized using NumPy for optimal cosine similarity calculations
+4. Vectors are stored in PostgreSQL using the `pgvector` extension
+5. When you search, the query is embedded and the backend ranks contacts by vector distance using cosine similarity
 
 ---
 
@@ -181,6 +185,10 @@ findtact/
 | PATCH | `/update_contact/<id>` | Update an existing contact |
 | DELETE | `/delete_contact/<id>` | Delete a contact |
 | POST | `/semantic_search` | Search contacts by meaning |
+| GET | `/export_contacts` | Export all contacts as CSV |
+| POST | `/import_contacts` | Import contacts from CSV file |
+| GET | `/contacts/analytics` | Get contact statistics and insights |
+| GET | `/contacts/similar/<id>` | Find contacts similar to a given one |
 | POST | `/seed_contacts` | Seed demo contacts |
 | GET | `/health/db` | Database health check |
 
@@ -208,6 +216,51 @@ Response:
     }
   ]
 }
+```
+
+### Example: Export Contacts to CSV
+
+```bash
+curl -X GET http://localhost:5000/export_contacts -o contacts.csv
+```
+
+### Example: Import Contacts from CSV
+
+```bash
+curl -X POST http://localhost:5000/import_contacts \
+  -F "file=@contacts.csv"
+```
+
+CSV format:
+```csv
+first_name,last_name,email,tags,notes
+John,Doe,john@example.com,friend;work,Met at conference
+Jane,Smith,jane@example.com,family,Sister
+```
+
+### Example: Contact Analytics
+
+```bash
+curl -X GET http://localhost:5000/contacts/analytics
+```
+
+Response:
+```json
+{
+  "total_contacts": 5,
+  "tag_stats": {
+    "unique_tags": 8,
+    "top_tags": {"friend": 2, "work": 1}
+  },
+  "email_domains": {"example.com": 5},
+  "notes_stats": {"avg_length": 65.2}
+}
+```
+
+### Example: Find Similar Contacts
+
+```bash
+curl -X GET http://localhost:5000/contacts/similar/5?limit=3
 ```
 
 ---
